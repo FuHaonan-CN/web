@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>角色管理</title>
+    <th:block th:include="/admin/commonModule/common :: head">admin公共的head引用</th:block>
+    <th:block th:include="/admin/commonModule/common :: head_page">admin公共的分页head引用</th:block>
+    <script language='javascript'>
+        function delcfm() {
+//            if(!confirm('确定要删除该条记录吗？')){ window.location.href='userManager.jsp';return;}
+            if (!confirm('危险操作！确定要继续删除记录吗？')) {
+                window.event.returnValue = false;
+            }
+        }
+    </script>
+    <style>
+        #modal-con{
+            width: 400px; height: 525px;
+            position: fixed; z-index: 9999; top: 50%; left: 50%; visibility: visible;
+            border-radius: 4px; border: 1px solid rgb(255, 255, 255); background: rgb(255, 255, 255); margin-top: -257.5px; margin-left: -200px;
+        }
+        .modal-con-mask{
+            width: 100%;height: 100%;position: fixed;top: 0px;left: 0px;
+            z-index: 8888;opacity: 0.3;background-color: rgb(0, 0, 0);display: block;
+        }
+    </style>
+</head>
+<body>
+<!--主体-->
+<div class="container">
+    <!--导航横条-->
+    <div class="crumb-wrap">
+        <div class="crumb-list">
+            <i class="icon-font"></i>
+            <a target="index" href="javascript:void(0);">后台首页</a>
+            <span class="crumb-step">&gt;</span>
+            <span class="crumb-name">角色管理</span>
+        </div>
+    </div>
+    <!--模糊查询-->
+    <div class="search-wrap">
+        <div class="search-content">
+            <form action="" method="post" onsubmit="return false;">
+                <table class="search-tab">
+                    <tr>
+                        <th width="120">角色名称:</th>
+                        <td>
+                            <input id="keyWords" class="common-text" placeholder="关键字" value="" type="text">
+                        </td>
+                        <td>
+                            <button class="btn btn-primary" onclick="query()">查询</button>
+                        </td>
+                    </tr>
+                </table>
+            </form>
+        </div>
+    </div>
+
+    <!--嵌入iframe用作增加修改-->
+    <div id="iframe-add-box" class="container" style="display: none">
+        <div id="iframe-add-con" class="passport-iframe-con" style="width: 400px; height: 525px; position: fixed;
+        z-index: 9999; top: 50%; left: 50%; visibility: visible;
+        border-radius: 4px; border: 1px solid rgb(255, 255, 255); background: rgb(255, 255, 255); margin-top: -257.5px; margin-left: -200px;">
+            <iframe id="iframe-add" height="100%" scrolling="no" width="100%" frameborder="0"
+                    style="border:none;" src=""></iframe>
+        </div>
+        <div class="iframe-add-shadow"
+             style="width: 100%;height: 100%;position: fixed;top: 0px;left: 0px;z-index: 8888;opacity: 0.3;background-color: rgb(0, 0, 0);display: block;">
+        </div>
+    </div>
+
+    <!--角色列表-->
+    <div class="result-wrap">
+        <form action="" id="myform" method="post">
+            <!--快捷操作-->
+            <div class="result-title">
+                <div class="result-list">
+                    <a href="javascript:void(0);" id="btn_add" target="role_addOrEdit">新增</a>
+                    <a href="javascript:void(0);" id="btn_batchDel"
+                       onclick="document.getElementById('myform').submit();delcfm()">批量删除 </a>
+                    <a id="btn_updateOrd" href="javascript:void(0);">更新排序 </a>
+                </div>
+            </div>
+            <!--表格显示内容-->
+            <div class="result-content">
+                <table class="result-tab" width="90%">
+                    <thead>
+                    <tr>
+                        <th class="tc" width="5%"><input id="allChoose" class="allChoose" type="checkbox">全选</th>
+                        <th width="5%">ID</th>
+                        <th width="10%">角色名称</th>
+                        <th width="10%">角色描述</th>
+                        <th width="20%">权限列表</th>
+                        <th width="20%">创建时间</th>
+                        <th width="10%">操作</th>
+                    </tr>
+                    </thead>
+                    <tbody id="content">
+                    <!--主体-->
+                    </tbody>
+                </table>
+                <!--翻页模块引用-->
+                <div class="list-page" style="width:90%;"
+                     th:include="/admin/commonModule/common :: pagination"></div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script type="text/javascript">
+    $(function () {
+        /*获取数据*/
+        initRecord(1);
+        /*初始化分页*/
+        initPage();
+    });
+    /*获取并填充数据*/
+    function initRecord(pageNo) {
+        $.ajax({
+            type: "POST",//方法类型
+            dataType: "json",//预期服务器返回的数据类型
+            url: "/admin/data/rolePage",//${pageContext.request.contextPath}
+//                processData: false,//必须false才会避开jQuery对 formdata 的默认处理
+//                contentType: false,//必须false才会自动加上正确的Content-Type
+
+            async: false,//这里面必须改为同步，因为要先执行ajax获取记录总数totalRecords
+            data: {
+//                    "token": token,
+                "page": pageNo-1,
+                "size": 3,
+                "key": $('#keyWords').val(),
+                "sort": "asc"
+            },
+            success: function (res) {
+                if (res.code === 0) {
+                    console.log(res);
+                    total = res.data.totalPages;
+                    totalRecords = res.data.totalElements;
+                    var tbodyHtml = "";
+                    $.each(res.data.content,function(k,v){
+                        tbodyHtml += '<tr>';
+                        tbodyHtml += '<td class="tc">'+'<input name="roleId" type="checkbox" value="'+v.id+'">'+'</td>';
+                        tbodyHtml += '<td>'+v.id+'</td>';
+                        tbodyHtml += '<td>'+v.roleName+'</td>';
+                        tbodyHtml += '<td>'+v.roleDesc+'</td>';
+                        tbodyHtml += '<td>'+'XXX'+'</td>';
+                        tbodyHtml += '<td>'+formatDate(v.createDate)+'</td>';
+//                        tbodyHtml += '<td>'+formatDate(v.lastLoginTime)+'</td>';
+                        tbodyHtml += '<td>'+'<a class="link-update" href="/Admin_updateInput_admin?id=">修改</a>&nbsp&nbsp&nbsp&nbsp' +
+                            '<a class="link-del" href="/Admin_delete_admin?id=" onclick="delcfm()">删除</a>' + '</td>';
+                        tbodyHtml += '</tr>';
+                    });
+                    $("#content").html(tbodyHtml);
+                }
+            }
+        });
+    }
+    $(".result-list>a").click(
+        function(){
+            var current = $(this);
+            var target = current.attr('target');   //找到a的链接
+            set_modal_url(target);
+        }
+    );
+    /*使用jquery替换main方法*/
+    function set_modal_url(message) {
+        var curHost = window.location.host;
+        var curUrl = 'http://' + curHost + '/admin/main/role/' + message ;
+        $('#iframe-add').attr('src', curUrl);
+        /*js方式注入*/
+        //$("#modal-con").load(curUrl);
+
+        $('#iframe-add-box')[0].style.display = "";
+    }
+</script>
+</body>
+</html>
